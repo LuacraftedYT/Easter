@@ -9,16 +9,17 @@ local KnitServices = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Kn
 local CarrotRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForChild("RF"):WaitForChild("CarrotCollected")
 local UpgradeRemote = KnitServices:WaitForChild("CarrotUpgradesService"):WaitForChild("RF"):WaitForChild("BuyUpgrade")
 local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):WaitForChild("RF"):WaitForChild("BuyAscension")
+local RuneRemote = KnitServices:WaitForChild("CarrotRunesService"):WaitForChild("RF"):WaitForChild("PushRuneButton")
 
 print("========================================")
-print("👑 [AWS EXPLOIT] Injecting Ultimate Master Hub...")
+print("👑 [AWS EXPLOIT] Injecting Master Hub V2 (Runes Added)...")
 print("========================================")
 
 ---------------------------------------------------------
 --- [[ PART 1: MASTER UI CONSTRUCTION ]] ---
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MasterEventHub"
+ScreenGui.Name = "MasterEventHubV2"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -32,7 +33,7 @@ end
 
 -- The Master Draggable Container
 local Container = Instance.new("Frame")
-Container.Size = UDim2.new(0, 160, 0, 160)
+Container.Size = UDim2.new(0, 160, 0, 200) -- Expanded height for the 5th button
 Container.Position = UDim2.new(0.5, -80, 0.15, 0)
 Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Container.BorderSizePixel = 0
@@ -121,6 +122,21 @@ local AscendStroke = Instance.new("UIStroke", AscendBtn)
 AscendStroke.Color = Color3.fromRGB(255, 75, 75)
 AscendStroke.Thickness = 1
 
+-- 5️⃣ RUNE GACHA BUTTON
+local RuneBtn = Instance.new("TextButton")
+RuneBtn.Size = UDim2.new(0, 146, 0, 32)
+RuneBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+RuneBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RuneBtn.Text = "OFF | Auto Rune"
+RuneBtn.Font = Enum.Font.Code
+RuneBtn.TextSize = 13
+RuneBtn.LayoutOrder = 5
+RuneBtn.Parent = Container
+Instance.new("UICorner", RuneBtn).CornerRadius = UDim.new(0.2, 0)
+local RuneStroke = Instance.new("UIStroke", RuneBtn)
+RuneStroke.Color = Color3.fromRGB(150, 50, 255)
+RuneStroke.Thickness = 1
+
 -- Mobile Draggable Logic
 local dragging = false
 local dragInput, dragStart, startPos
@@ -181,7 +197,6 @@ HarvestBtn.MouseButton1Click:Connect(function()
                             local guid = carrot:GetAttribute("CarrotGuid")
                             
                             if cZone and guid and (carrot:IsA("BasePart") or carrot:IsA("Model")) then
-                                -- Magnet teleport item to player
                                 if carrot:IsA("Model") then
                                     carrot:PivotTo(root.CFrame)
                                 else
@@ -272,5 +287,32 @@ AscendBtn.MouseButton1Click:Connect(function()
         AscendBtn.Text = "OFF | Auto Ascend"
         AscendBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         AscendStroke.Color = Color3.fromRGB(255, 75, 75)
+    end
+end)
+
+-- ENGINE 4: AUTO RUNE GACHA
+local autoRune = false
+
+RuneBtn.MouseButton1Click:Connect(function()
+    autoRune = not autoRune
+    if autoRune then
+        RuneBtn.Text = "ON | Auto Rune"
+        RuneBtn.BackgroundColor3 = Color3.fromRGB(90, 0, 150)
+        RuneStroke.Color = Color3.fromRGB(180, 100, 255)
+        
+        task.spawn(function()
+            while autoRune do
+                pcall(function()
+                    -- Fires the gacha roll. 
+                    RuneRemote:InvokeServer(zone)
+                end)
+                -- The game's native delay is ~0.36s. We use 0.3 to push it fast but avoid packet loss.
+                task.wait(0.3) 
+            end
+        end)
+    else
+        RuneBtn.Text = "OFF | Auto Rune"
+        RuneBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        RuneStroke.Color = Color3.fromRGB(150, 50, 255)
     end
 end)
