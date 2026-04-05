@@ -1,0 +1,276 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Fetch the Network Remotes
+local KnitServices = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
+local CarrotRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForChild("RF"):WaitForChild("CarrotCollected")
+local UpgradeRemote = KnitServices:WaitForChild("CarrotUpgradesService"):WaitForChild("RF"):WaitForChild("BuyUpgrade")
+local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):WaitForChild("RF"):WaitForChild("BuyAscension")
+
+print("========================================")
+print("👑 [AWS EXPLOIT] Injecting Ultimate Master Hub...")
+print("========================================")
+
+---------------------------------------------------------
+--- [[ PART 1: MASTER UI CONSTRUCTION ]] ---
+---------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MasterEventHub"
+ScreenGui.ResetOnSpawn = false
+
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = game:GetService("CoreGui")
+else
+    ScreenGui.Parent = game:GetService("CoreGui")
+end
+
+-- The Master Draggable Container
+local Container = Instance.new("Frame")
+Container.Size = UDim2.new(0, 160, 0, 160)
+Container.Position = UDim2.new(0.5, -80, 0.15, 0)
+Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Container.BorderSizePixel = 0
+Container.Active = true
+Container.Parent = ScreenGui
+
+local ContainerCorner = Instance.new("UICorner")
+ContainerCorner.CornerRadius = UDim.new(0.1, 0)
+ContainerCorner.Parent = Container
+
+local ContainerStroke = Instance.new("UIStroke")
+ContainerStroke.Color = Color3.fromRGB(255, 150, 0)
+ContainerStroke.Thickness = 2
+ContainerStroke.Parent = Container
+
+-- UI List Layout (Auto-stacks the buttons)
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Container
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Padding for the container
+local UIPadding = Instance.new("UIPadding")
+UIPadding.Parent = Container
+UIPadding.PaddingTop = UDim.new(0, 7)
+UIPadding.PaddingBottom = UDim.new(0, 7)
+
+-- 1️⃣ MAGNET HARVEST BUTTON
+local HarvestBtn = Instance.new("TextButton")
+HarvestBtn.Size = UDim2.new(0, 146, 0, 32)
+HarvestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+HarvestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+HarvestBtn.Text = "OFF | Magnet Farm"
+HarvestBtn.Font = Enum.Font.Code
+HarvestBtn.TextSize = 13
+HarvestBtn.LayoutOrder = 1
+HarvestBtn.Parent = Container
+Instance.new("UICorner", HarvestBtn).CornerRadius = UDim.new(0.2, 0)
+local HarvestStroke = Instance.new("UIStroke", HarvestBtn)
+HarvestStroke.Color = Color3.fromRGB(255, 100, 0)
+HarvestStroke.Thickness = 1
+
+-- 2️⃣ LIVE COUNTER LABEL
+local CounterLbl = Instance.new("TextLabel")
+CounterLbl.Size = UDim2.new(0, 146, 0, 18)
+CounterLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+CounterLbl.TextColor3 = Color3.fromRGB(164, 255, 66)
+CounterLbl.Text = "✅ Verified: 0"
+CounterLbl.Font = Enum.Font.Code
+CounterLbl.TextSize = 12
+CounterLbl.LayoutOrder = 2
+CounterLbl.Parent = Container
+Instance.new("UICorner", CounterLbl).CornerRadius = UDim.new(0.2, 0)
+local LblStroke = Instance.new("UIStroke", CounterLbl)
+LblStroke.Color = Color3.fromRGB(100, 200, 0)
+LblStroke.Thickness = 1
+
+-- 3️⃣ UPGRADE BUTTON
+local UpgradeBtn = Instance.new("TextButton")
+UpgradeBtn.Size = UDim2.new(0, 146, 0, 32)
+UpgradeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+UpgradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UpgradeBtn.Text = "OFF | Auto Upgrade"
+UpgradeBtn.Font = Enum.Font.Code
+UpgradeBtn.TextSize = 13
+UpgradeBtn.LayoutOrder = 3
+UpgradeBtn.Parent = Container
+Instance.new("UICorner", UpgradeBtn).CornerRadius = UDim.new(0.2, 0)
+local UpgradeStroke = Instance.new("UIStroke", UpgradeBtn)
+UpgradeStroke.Color = Color3.fromRGB(100, 100, 255)
+UpgradeStroke.Thickness = 1
+
+-- 4️⃣ ASCEND BUTTON
+local AscendBtn = Instance.new("TextButton")
+AscendBtn.Size = UDim2.new(0, 146, 0, 32)
+AscendBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+AscendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AscendBtn.Text = "OFF | Auto Ascend"
+AscendBtn.Font = Enum.Font.Code
+AscendBtn.TextSize = 13
+AscendBtn.LayoutOrder = 4
+AscendBtn.Parent = Container
+Instance.new("UICorner", AscendBtn).CornerRadius = UDim.new(0.2, 0)
+local AscendStroke = Instance.new("UIStroke", AscendBtn)
+AscendStroke.Color = Color3.fromRGB(255, 75, 75)
+AscendStroke.Thickness = 1
+
+-- Mobile Draggable Logic
+local dragging = false
+local dragInput, dragStart, startPos
+
+Container.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Container.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+Container.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+---------------------------------------------------------
+--- [[ PART 2: THE EXPLOIT ENGINES ]] ---
+---------------------------------------------------------
+local zone = "BunnyBurrow"
+
+-- ENGINE 1: V4 MAGNET HARVESTER
+local farming = false
+local totalHarvested = 0
+
+HarvestBtn.MouseButton1Click:Connect(function()
+    farming = not farming
+    if farming then
+        HarvestBtn.Text = "ON | Magnet Farm"
+        HarvestBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        HarvestStroke.Color = Color3.fromRGB(0, 255, 0)
+        
+        task.spawn(function()
+            while farming do
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local root = char.HumanoidRootPart
+                    local gameObjects = Workspace:FindFirstChild("GameObjects")
+                    local carrotsFolder = gameObjects and gameObjects:FindFirstChild("Carrots")
+                    
+                    if carrotsFolder then
+                        for _, carrot in ipairs(carrotsFolder:GetChildren()) do
+                            if not farming then break end 
+                            
+                            local cZone = carrot:GetAttribute("CarrotZone")
+                            local guid = carrot:GetAttribute("CarrotGuid")
+                            
+                            if cZone and guid and (carrot:IsA("BasePart") or carrot:IsA("Model")) then
+                                -- Magnet teleport item to player
+                                if carrot:IsA("Model") then
+                                    carrot:PivotTo(root.CFrame)
+                                else
+                                    carrot.CFrame = root.CFrame
+                                end
+                                
+                                task.spawn(function()
+                                    local success, result = pcall(function()
+                                        return CarrotRemote:InvokeServer(cZone, guid)
+                                    end)
+                                    
+                                    if success and result == true then
+                                        totalHarvested = totalHarvested + 1
+                                        CounterLbl.Text = "✅ Verified: " .. tostring(totalHarvested)
+                                        if carrot and carrot.Parent then
+                                            carrot:Destroy()
+                                        end
+                                    end
+                                end)
+                                task.wait(0.05)
+                            end
+                        end
+                    end
+                end
+                task.wait(0.1) 
+            end
+        end)
+    else
+        HarvestBtn.Text = "OFF | Magnet Farm"
+        HarvestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        HarvestStroke.Color = Color3.fromRGB(255, 100, 0)
+    end
+end)
+
+-- ENGINE 2: AUTO UPGRADER
+local autoUpgrade = false
+local targetUpgrades = {"MoreCarrots", "FasterCarrots", "MoreSpawns", "HigherCapacity"}
+
+UpgradeBtn.MouseButton1Click:Connect(function()
+    autoUpgrade = not autoUpgrade
+    if autoUpgrade then
+        UpgradeBtn.Text = "ON | Auto Upgrade"
+        UpgradeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        UpgradeStroke.Color = Color3.fromRGB(0, 200, 255)
+        
+        task.spawn(function()
+            while autoUpgrade do
+                for _, upgradeName in ipairs(targetUpgrades) do
+                    if not autoUpgrade then break end
+                    task.spawn(function()
+                        pcall(function()
+                            UpgradeRemote:InvokeServer(zone, upgradeName)
+                        end)
+                    end)
+                    task.wait(0.25)
+                end
+                task.wait(2)
+            end
+        end)
+    else
+        UpgradeBtn.Text = "OFF | Auto Upgrade"
+        UpgradeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        UpgradeStroke.Color = Color3.fromRGB(100, 100, 255)
+    end
+end)
+
+-- ENGINE 3: AUTO ASCENDER
+local autoAscend = false
+
+AscendBtn.MouseButton1Click:Connect(function()
+    autoAscend = not autoAscend
+    if autoAscend then
+        AscendBtn.Text = "ON | Auto Ascend"
+        AscendBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        AscendStroke.Color = Color3.fromRGB(255, 100, 100)
+        
+        task.spawn(function()
+            while autoAscend do
+                task.spawn(function()
+                    pcall(function()
+                        AscensionRemote:InvokeServer(zone)
+                    end)
+                end)
+                task.wait(5)
+            end
+        end)
+    else
+        AscendBtn.Text = "OFF | Auto Ascend"
+        AscendBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        AscendStroke.Color = Color3.fromRGB(255, 75, 75)
+    end
+end)
