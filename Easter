@@ -2,24 +2,36 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
--- Fetch the Network Remotes
+print("========================================")
+print("👑 [AWS EXPLOIT] Injecting Master Hub V3 (Anti-AFK Enabled)...")
+print("========================================")
+
+---------------------------------------------------------
+--- [[ PART 0: ANTI-AFK MODULE ]] ---
+---------------------------------------------------------
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+    print("🛡️ [AWS EXPLOIT] Anti-AFK triggered! Bypassed 20-minute idle kick.")
+end)
+
+---------------------------------------------------------
+--- [[ PART 1: NETWORK REMOTES ]] ---
+---------------------------------------------------------
 local KnitServices = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
 local CarrotRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForChild("RF"):WaitForChild("CarrotCollected")
 local UpgradeRemote = KnitServices:WaitForChild("CarrotUpgradesService"):WaitForChild("RF"):WaitForChild("BuyUpgrade")
 local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):WaitForChild("RF"):WaitForChild("BuyAscension")
 local RuneRemote = KnitServices:WaitForChild("CarrotRunesService"):WaitForChild("RF"):WaitForChild("PushRuneButton")
 
-print("========================================")
-print("👑 [AWS EXPLOIT] Injecting Master Hub V2 (Runes Added)...")
-print("========================================")
-
 ---------------------------------------------------------
---- [[ PART 1: MASTER UI CONSTRUCTION ]] ---
+--- [[ PART 2: MASTER UI CONSTRUCTION ]] ---
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MasterEventHubV2"
+ScreenGui.Name = "MasterEventHubV3"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -31,9 +43,9 @@ else
     ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- The Master Draggable Container
+-- Master Draggable Container
 local Container = Instance.new("Frame")
-Container.Size = UDim2.new(0, 160, 0, 200) -- Expanded height for the 5th button
+Container.Size = UDim2.new(0, 160, 0, 200) 
 Container.Position = UDim2.new(0.5, -80, 0.15, 0)
 Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Container.BorderSizePixel = 0
@@ -49,14 +61,12 @@ ContainerStroke.Color = Color3.fromRGB(255, 150, 0)
 ContainerStroke.Thickness = 2
 ContainerStroke.Parent = Container
 
--- UI List Layout (Auto-stacks the buttons)
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Padding for the container
 local UIPadding = Instance.new("UIPadding")
 UIPadding.Parent = Container
 UIPadding.PaddingTop = UDim.new(0, 7)
@@ -166,11 +176,11 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ---------------------------------------------------------
---- [[ PART 2: THE EXPLOIT ENGINES ]] ---
+--- [[ PART 3: THE EXPLOIT ENGINES ]] ---
 ---------------------------------------------------------
 local zone = "BunnyBurrow"
 
--- ENGINE 1: V4 MAGNET HARVESTER
+-- ENGINE 1: MAGNET HARVESTER
 local farming = false
 local totalHarvested = 0
 
@@ -197,6 +207,7 @@ HarvestBtn.MouseButton1Click:Connect(function()
                             local guid = carrot:GetAttribute("CarrotGuid")
                             
                             if cZone and guid and (carrot:IsA("BasePart") or carrot:IsA("Model")) then
+                                -- Magnet teleport item to player
                                 if carrot:IsA("Model") then
                                     carrot:PivotTo(root.CFrame)
                                 else
@@ -303,10 +314,8 @@ RuneBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while autoRune do
                 pcall(function()
-                    -- Fires the gacha roll. 
                     RuneRemote:InvokeServer(zone)
                 end)
-                -- The game's native delay is ~0.36s. We use 0.3 to push it fast but avoid packet loss.
                 task.wait(0.3) 
             end
         end)
