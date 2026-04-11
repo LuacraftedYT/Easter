@@ -6,13 +6,10 @@ local VirtualUser = game:GetService("VirtualUser")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- ⚠️ CHANGE THIS IF NEEDED ⚠️
-local targetEggName = "EasterEgg2026" 
-local openAmount = 3 
 local zone = "BunnyBurrow"
 
 print("========================================")
-print("👑 [AWS EXPLOIT] Injecting V10 God Hub...")
+print("🥕 [AWS EXPLOIT] Injecting V11 Carrot Hub...")
 print("========================================")
 
 ---------------------------------------------------------
@@ -21,7 +18,7 @@ print("========================================")
 LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
-    print("🛡️ [AWS EXPLOIT] Anti-AFK triggered! Bypassed 20-minute idle kick.")
+    print("🛡️ [AWS EXPLOIT] Anti-AFK triggered! Bypassed idle kick.")
 end)
 
 ---------------------------------------------------------
@@ -32,13 +29,12 @@ local CarrotRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForC
 local UpgradeRemote = KnitServices:WaitForChild("CarrotUpgradesService"):WaitForChild("RF"):WaitForChild("BuyUpgrade")
 local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):WaitForChild("RF"):WaitForChild("BuyAscension")
 local RuneRemote = KnitServices:WaitForChild("CarrotRunesService"):WaitForChild("RF"):WaitForChild("PushRuneButton")
-local EggRemote = KnitServices:WaitForChild("EggService"):WaitForChild("RF"):WaitForChild("OpenEgg")
 
 ---------------------------------------------------------
---- [[ PART 2: MASTER UI CONSTRUCTION ]] ---
+--- [[ PART 2: UI CONSTRUCTION ]] ---
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "UltimateGodHub"
+ScreenGui.Name = "CarrotOnlyHub"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -50,10 +46,10 @@ else
     ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- Master Draggable Container
+-- Container (Made shorter since we removed the egg stuff)
 local Container = Instance.new("Frame")
-Container.Size = UDim2.new(0, 160, 0, 360) 
-Container.Position = UDim2.new(0.5, -80, 0.1, 0)
+Container.Size = UDim2.new(0, 160, 0, 215) 
+Container.Position = UDim2.new(0.5, -80, 0.2, 0)
 Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Container.BorderSizePixel = 0
 Container.Active = true
@@ -64,7 +60,7 @@ ContainerCorner.CornerRadius = UDim.new(0.05, 0)
 ContainerCorner.Parent = Container
 
 local ContainerStroke = Instance.new("UIStroke")
-ContainerStroke.Color = Color3.fromRGB(255, 215, 0) 
+ContainerStroke.Color = Color3.fromRGB(255, 150, 0) 
 ContainerStroke.Thickness = 2
 ContainerStroke.Parent = Container
 
@@ -143,63 +139,6 @@ Instance.new("UICorner", RuneBtn).CornerRadius = UDim.new(0.2, 0)
 local RuneStroke = Instance.new("UIStroke", RuneBtn)
 RuneStroke.Color = Color3.fromRGB(150, 50, 255)
 
-local HatchBtn = Instance.new("TextButton")
-HatchBtn.Size = UDim2.new(0, 146, 0, 30)
-HatchBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-HatchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HatchBtn.Text = "OFF | Auto Hatch"
-HatchBtn.Font = Enum.Font.Code
-HatchBtn.TextSize = 13
-HatchBtn.LayoutOrder = 6
-HatchBtn.Parent = Container
-Instance.new("UICorner", HatchBtn).CornerRadius = UDim.new(0.2, 0)
-local HatchStroke = Instance.new("UIStroke", HatchBtn)
-HatchStroke.Color = Color3.fromRGB(0, 200, 255)
-
-local MegaLbl = Instance.new("TextLabel")
-MegaLbl.Size = UDim2.new(0, 146, 0, 16)
-MegaLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MegaLbl.TextColor3 = Color3.fromRGB(255, 100, 255)
-MegaLbl.Text = "✨ Mega: 0"
-MegaLbl.Font = Enum.Font.Code
-MegaLbl.TextSize = 12
-MegaLbl.LayoutOrder = 7
-MegaLbl.Parent = Container
-Instance.new("UICorner", MegaLbl).CornerRadius = UDim.new(0.2, 0)
-
-local GigaLbl = Instance.new("TextLabel")
-GigaLbl.Size = UDim2.new(0, 146, 0, 16)
-GigaLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-GigaLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-GigaLbl.Text = "💎 Giga: 0"
-GigaLbl.Font = Enum.Font.Code
-GigaLbl.TextSize = 12
-GigaLbl.LayoutOrder = 8
-GigaLbl.Parent = Container
-Instance.new("UICorner", GigaLbl).CornerRadius = UDim.new(0.2, 0)
-
-local OlympicLbl = Instance.new("TextLabel")
-OlympicLbl.Size = UDim2.new(0, 146, 0, 16)
-OlympicLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-OlympicLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-OlympicLbl.Text = "🏅 Olympic: 0"
-OlympicLbl.Font = Enum.Font.Code
-OlympicLbl.TextSize = 12
-OlympicLbl.LayoutOrder = 9
-OlympicLbl.Parent = Container
-Instance.new("UICorner", OlympicLbl).CornerRadius = UDim.new(0.2, 0)
-
-local ResetBtn = Instance.new("TextButton")
-ResetBtn.Size = UDim2.new(0, 146, 0, 24)
-ResetBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ResetBtn.Text = "🔄 Reset Stats"
-ResetBtn.Font = Enum.Font.Code
-ResetBtn.TextSize = 12
-ResetBtn.LayoutOrder = 10
-ResetBtn.Parent = Container
-Instance.new("UICorner", ResetBtn).CornerRadius = UDim.new(0.2, 0)
-
 local ConsoleBtn = Instance.new("TextButton")
 ConsoleBtn.Size = UDim2.new(0, 146, 0, 30)
 ConsoleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -207,7 +146,7 @@ ConsoleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ConsoleBtn.Text = "📜 Open Console"
 ConsoleBtn.Font = Enum.Font.Code
 ConsoleBtn.TextSize = 13
-ConsoleBtn.LayoutOrder = 11
+ConsoleBtn.LayoutOrder = 6
 ConsoleBtn.Parent = Container
 Instance.new("UICorner", ConsoleBtn).CornerRadius = UDim.new(0.2, 0)
 
@@ -367,54 +306,7 @@ RuneBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ENGINE 5: EGG HATCHER & ANALYTICS
-local autoHatch = false
-local stats = { Mega = 0, Giga = 0, Olympic = 0 }
-
-ResetBtn.MouseButton1Click:Connect(function()
-    stats.Mega, stats.Giga, stats.Olympic = 0, 0, 0
-    MegaLbl.Text = "✨ Mega: 0"
-    GigaLbl.Text = "💎 Giga: 0"
-    OlympicLbl.Text = "🏅 Olympic: 0"
-end)
-
-HatchBtn.MouseButton1Click:Connect(function()
-    autoHatch = not autoHatch
-    if autoHatch then
-        HatchBtn.Text = "ON | Auto Hatch"
-        HatchBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-        task.spawn(function()
-            while autoHatch do
-                pcall(function()
-                    local result = EggRemote:InvokeServer(targetEggName, openAmount)
-                    if type(result) == "table" then
-                        for _, petData in ipairs(result) do
-                            local petName = petData.Key or petData.PetId or petData.Name
-                            if petName then
-                                if string.find(petName, "Olympic") then
-                                    stats.Olympic = stats.Olympic + 1
-                                    OlympicLbl.Text = "🏅 Olympic: " .. tostring(stats.Olympic)
-                                elseif string.find(petName, "Giga") then
-                                    stats.Giga = stats.Giga + 1
-                                    GigaLbl.Text = "💎 Giga: " .. tostring(stats.Giga)
-                                elseif string.find(petName, "Mega") then
-                                    stats.Mega = stats.Mega + 1
-                                    MegaLbl.Text = "✨ Mega: " .. tostring(stats.Mega)
-                                end
-                            end
-                        end
-                    end
-                end)
-                task.wait(1.5) 
-            end
-        end)
-    else
-        HatchBtn.Text = "OFF | Auto Hatch"
-        HatchBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    end
-end)
-
--- ENGINE 6: CONSOLE
+-- ENGINE 5: CONSOLE
 ConsoleBtn.MouseButton1Click:Connect(function()
     pcall(function() StarterGui:SetCore("DeveloperConsoleVisible", true) end)
 end)
@@ -431,11 +323,8 @@ task.spawn(function()
         
         if carrotsFolder then
             for _, carrot in ipairs(carrotsFolder:GetChildren()) do
-                -- Check if we already hid this carrot so we don't waste CPU
                 if not carrot:GetAttribute("IsHidden") then
                     carrot:SetAttribute("IsHidden", true)
-                    
-                    -- Strip graphics and physics from every piece of the carrot
                     for _, part in ipairs(carrot:GetDescendants()) do
                         if part:IsA("BasePart") or part:IsA("MeshPart") then
                             part.Transparency = 1
@@ -447,8 +336,6 @@ task.spawn(function()
                             part.Transparency = 1
                         end
                     end
-                    
-                    -- If the main carrot is a single part, hide it too
                     if carrot:IsA("BasePart") or carrot:IsA("MeshPart") then
                         carrot.Transparency = 1
                         carrot.CanCollide = false
@@ -457,7 +344,6 @@ task.spawn(function()
                 end
             end
         end
-        -- Run the lag sweeper every 1 second
         task.wait(1)
     end
 end)
