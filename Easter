@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 local zone = "BunnyBurrow"
-local travelSpeed = 170 -- ⚡ Lower to 50 if you experience rubberbanding
+local travelSpeed = 50 -- ⚡ Lower to 50 if you experience rubberbanding
 
 -- Path Configuration
 local minX, maxX = -9476, -9376
