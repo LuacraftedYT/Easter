@@ -3,10 +3,11 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService") 
 local LocalPlayer = Players.LocalPlayer
 
 local zone = "BunnyBurrow"
+local travelSpeed = 170 -- ⚡ Lower to 50 if you experience rubberbanding
 
 -- Path Configuration
 local minX, maxX = -9476, -9376
@@ -29,100 +30,51 @@ local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):Wait
 local RuneRemote = KnitServices:WaitForChild("CarrotRunesService"):WaitForChild("RF"):WaitForChild("PushRuneButton")
 
 local batchQueue = {}
-
 local function flushQueue()
     if #batchQueue > 0 then
-        local payload = batchQueue
-        batchQueue = {}
-        task.spawn(function() pcall(function() BatchRemote:InvokeServer(payload) end) end)
+        local pld = batchQueue; batchQueue = {}
+        task.spawn(function() pcall(function() BatchRemote:InvokeServer(pld) end) end)
     end
 end
 
 ---------------------------------------------------------
---- [[ PART 1: STEALTH UI CONSTRUCTION ]] ---
+--- [[ PART 1: UI CONSTRUCTION ]] ---
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "Sys_" .. math.random(1000, 9999)
 ScreenGui.ResetOnSpawn = false
-
 if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = game:GetService("CoreGui") end
 
--- [[ DRAGGABLE EYE BUTTON ]] --
 local EyeBtn = Instance.new("TextButton", ScreenGui)
-EyeBtn.Size = UDim2.new(0, 45, 0, 45)
-EyeBtn.Position = UDim2.new(0, 20, 0.5, -22)
-EyeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-EyeBtn.Text = "👁️"
-EyeBtn.TextSize = 25
-EyeBtn.ZIndex = 10
+EyeBtn.Size = UDim2.new(0, 45, 0, 45); EyeBtn.Position = UDim2.new(0, 20, 0.5, -22); EyeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); EyeBtn.Text = "👁️"; EyeBtn.TextSize = 25; EyeBtn.ZIndex = 10
 Instance.new("UICorner", EyeBtn).CornerRadius = UDim.new(1, 0)
-local EyeStroke = Instance.new("UIStroke", EyeBtn)
-EyeStroke.Color = Color3.fromRGB(255, 150, 0)
-EyeStroke.Thickness = 2
+Instance.new("UIStroke", EyeBtn).Color = Color3.fromRGB(255, 150, 0)
 
--- [[ MAIN CONTAINER ]] --
 local Container = Instance.new("Frame", ScreenGui)
-Container.Size = UDim2.new(0, 160, 0, 215) 
-Container.Position = UDim2.new(0.5, -80, 0.2, 0)
-Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Container.BorderSizePixel = 0
-Container.Active = true
+Container.Size = UDim2.new(0, 160, 0, 215); Container.Position = UDim2.new(0.5, -80, 0.2, 0); Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Container.Visible = true; Container.Active = true
 Instance.new("UICorner", Container).CornerRadius = UDim.new(0.05, 0)
-local ContainerStroke = Instance.new("UIStroke", Container)
-ContainerStroke.Color = Color3.fromRGB(255, 150, 0)
-ContainerStroke.Thickness = 2
+Instance.new("UIStroke", Container).Color = Color3.fromRGB(255, 150, 0)
 
 local UIListLayout = Instance.new("UIListLayout", Container)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder; UIListLayout.Padding = UDim.new(0, 5); UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 Instance.new("UIPadding", Container).PaddingTop = UDim.new(0, 7)
 
--- [[ DRAG LOGIC ]] --
+-- Drag Logic
 local dragToggle, dragStart, startPos
-EyeBtn.InputBegan:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        dragToggle = true
-        dragStart = input.Position
-        startPos = EyeBtn.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragToggle = false end
-        end)
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
-        local delta = input.Position - dragStart
-        EyeBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-EyeBtn.MouseButton1Click:Connect(function()
-    Container.Visible = not Container.Visible
-    EyeBtn.Text = Container.Visible and "👁️" or "❌"
-end)
-
----------------------------------------------------------
---- [[ PART 2: THE ENGINES ]] ---
----------------------------------------------------------
-local isWalking, autoUpgrade, autoAscend, autoRune = false, false, false, false
-local totalHarvested = 0
+EyeBtn.InputBegan:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then dragToggle = true; dragStart = input.Position; startPos = EyeBtn.Position end end)
+UserInputService.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then local delta = input.Position - dragStart; EyeBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragToggle = false end end)
+EyeBtn.MouseButton1Click:Connect(function() Container.Visible = not Container.Visible; EyeBtn.Text = Container.Visible and "👁️" or "❌" end)
 
 local function createButton(text, color, order)
     local btn = Instance.new("TextButton", Container)
-    btn.Size = UDim2.new(0, 146, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Text = "OFF | " .. text
-    btn.Font = Enum.Font.Code
-    btn.TextSize = 13
-    btn.LayoutOrder = order
+    btn.Size = UDim2.new(0, 146, 0, 30); btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35); btn.TextColor3 = Color3.new(1,1,1); btn.Text = "OFF | " .. text; btn.Font = Enum.Font.Code; btn.TextSize = 13; btn.LayoutOrder = order
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0.2, 0)
     Instance.new("UIStroke", btn).Color = color
     return btn
 end
 
-local WalkFarmBtn = createButton("Batch Path", Color3.fromRGB(0, 255, 120), 1)
+local WalkFarmBtn = createButton("V21 Hyper", Color3.fromRGB(0, 255, 120), 1)
 local CounterLbl = Instance.new("TextLabel", Container)
 CounterLbl.Size = UDim2.new(0, 146, 0, 16); CounterLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15); CounterLbl.TextColor3 = Color3.fromRGB(164, 255, 66); CounterLbl.Text = "✅ Collected: 0"; CounterLbl.Font = Enum.Font.Code; CounterLbl.TextSize = 12; CounterLbl.LayoutOrder = 2; Instance.new("UICorner", CounterLbl).CornerRadius = UDim.new(0.2, 0)
 
@@ -130,12 +82,17 @@ local UpgradeBtn = createButton("Auto Upgrade", Color3.fromRGB(100, 100, 255), 3
 local AscendBtn = createButton("Auto Ascend", Color3.fromRGB(255, 75, 75), 4)
 local RuneBtn = createButton("Auto Rune", Color3.fromRGB(150, 50, 255), 5)
 
--- COLLECTION LOGIC
+---------------------------------------------------------
+--- [[ PART 2: THE HYPER ENGINE ]] ---
+---------------------------------------------------------
+local isWalking, autoUpgrade, autoAscend, autoRune = false, false, false, false
+local totalHarvested = 0
+local activeTween = nil
+
 local function collectNearby()
     local gameObjects = Workspace:FindFirstChild("GameObjects")
     local carrotsFolder = gameObjects and gameObjects:FindFirstChild("Carrots")
     if not carrotsFolder or not isWalking then return end
-
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
@@ -143,9 +100,8 @@ local function collectNearby()
         local cZone, guid = carrot:GetAttribute("CarrotZone"), carrot:GetAttribute("CarrotGuid")
         if cZone and guid and not carrot:GetAttribute("Processed") then
             local carrotPos = carrot:IsA("Model") and carrot:GetPivot().Position or carrot.Position
-            if (carrotPos - root.Position).Magnitude < (stepSize + 5) then
+            if (carrotPos - root.Position).Magnitude < (stepSize + 10) then
                 carrot:SetAttribute("Processed", true)
-                for _, p in ipairs(carrot:GetDescendants()) do if p:IsA("BasePart") then p.Transparency = 1; p.CanCollide = false end end
                 
                 table.insert(batchQueue, {cZone, guid})
                 if #batchQueue >= 4 then
@@ -162,8 +118,7 @@ local function collectNearby()
     end
 end
 
--- MOVEMENT ENGINE
-local function runCoverage()
+local function runTweenPath()
     local function getPath()
         local pts = {} local up = true
         for x = minX, maxX, stepSize do
@@ -172,27 +127,29 @@ local function runCoverage()
             up = not up
         end return pts
     end
+
     while isWalking do
         for _, pt in ipairs(getPath()) do
             if not isWalking then break end
             local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
             local root = char and char:FindFirstChild("HumanoidRootPart")
-            if not hum or not root or hum.Health <= 0 then task.wait(2) break end
+            if not root then task.wait(2) break end
             
-            hum:MoveTo(pt)
-            local reached = false
-            local conn = hum.MoveToFinished:Connect(function() reached = true end)
+            root.Anchored = true 
+            local dist = (root.Position - pt).Magnitude
+            local duration = dist / travelSpeed
             
-            while not reached and isWalking do
-                task.wait(0.1); collectNearby()
-                -- Safety Fix: Check root existence inside loop
-                local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if currentRoot and (currentRoot.Position - pt).Magnitude < 3 then reached = true end
+            activeTween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(pt)})
+            activeTween:Play()
+            
+            local startTime = os.clock()
+            while isWalking and (os.clock() - startTime) < duration do
+                task.wait(0.03) -- Optimized for Mobile CPU
+                collectNearby()
             end
-            if conn then conn:Disconnect() end
+            if activeTween then activeTween:Cancel() end
         end
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end
 
@@ -201,15 +158,13 @@ end
 ---------------------------------------------------------
 WalkFarmBtn.MouseButton1Click:Connect(function()
     isWalking = not isWalking
-    WalkFarmBtn.Text = isWalking and "ON | Batch Path" or "OFF | Batch Path"
+    WalkFarmBtn.Text = isWalking and "ON | V21 Hyper" or "OFF | V21 Hyper"
     WalkFarmBtn.BackgroundColor3 = isWalking and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(35, 35, 35)
-    if isWalking then 
-        task.spawn(runCoverage) 
-    else 
+    if isWalking then task.spawn(runTweenPath) else 
+        if activeTween then activeTween:Cancel() end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.Anchored = false end
         flushQueue() 
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and char.PrimaryPart then hum:MoveTo(char.PrimaryPart.Position) end 
     end
 end)
 
