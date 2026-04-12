@@ -8,342 +8,228 @@ local LocalPlayer = Players.LocalPlayer
 
 local zone = "BunnyBurrow"
 
-print("========================================")
-print("🥕 [AWS EXPLOIT] Injecting V11 Carrot Hub...")
-print("========================================")
+-- Path Configuration
+local minX, maxX = -9476, -9376
+local minZ, maxZ = 10093, 10193
+local fixedY = 96.8
+local stepSize = 15 
 
 ---------------------------------------------------------
---- [[ PART 0: ANTI-AFK MODULE ]] ---
+--- [[ PART 0: NETWORK & SETUP ]] ---
 ---------------------------------------------------------
 LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
-    print("🛡️ [AWS EXPLOIT] Anti-AFK triggered! Bypassed idle kick.")
 end)
 
----------------------------------------------------------
---- [[ PART 1: NETWORK REMOTES ]] ---
----------------------------------------------------------
 local KnitServices = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
-local CarrotRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForChild("RF"):WaitForChild("CarrotCollected")
+local BatchRemote = KnitServices:WaitForChild("CarrotSpawningService"):WaitForChild("RF"):WaitForChild("CarrotCollectedBatch")
 local UpgradeRemote = KnitServices:WaitForChild("CarrotUpgradesService"):WaitForChild("RF"):WaitForChild("BuyUpgrade")
 local AscensionRemote = KnitServices:WaitForChild("CarrotAscensionService"):WaitForChild("RF"):WaitForChild("BuyAscension")
 local RuneRemote = KnitServices:WaitForChild("CarrotRunesService"):WaitForChild("RF"):WaitForChild("PushRuneButton")
 
----------------------------------------------------------
---- [[ PART 2: UI CONSTRUCTION ]] ---
----------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CarrotOnlyHub"
-ScreenGui.ResetOnSpawn = false
+local batchQueue = {}
 
-if gethui then
-    ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-    ScreenGui.Parent = game:GetService("CoreGui")
-else
-    ScreenGui.Parent = game:GetService("CoreGui")
+local function flushQueue()
+    if #batchQueue > 0 then
+        local payload = batchQueue
+        batchQueue = {}
+        task.spawn(function() pcall(function() BatchRemote:InvokeServer(payload) end) end)
+    end
 end
 
--- Container (Made shorter since we removed the egg stuff)
-local Container = Instance.new("Frame")
+---------------------------------------------------------
+--- [[ PART 1: STEALTH UI CONSTRUCTION ]] ---
+---------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Sys_" .. math.random(1000, 9999)
+ScreenGui.ResetOnSpawn = false
+
+if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = game:GetService("CoreGui") end
+
+-- [[ DRAGGABLE EYE BUTTON ]] --
+local EyeBtn = Instance.new("TextButton", ScreenGui)
+EyeBtn.Size = UDim2.new(0, 45, 0, 45)
+EyeBtn.Position = UDim2.new(0, 20, 0.5, -22)
+EyeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+EyeBtn.Text = "👁️"
+EyeBtn.TextSize = 25
+EyeBtn.ZIndex = 10
+Instance.new("UICorner", EyeBtn).CornerRadius = UDim.new(1, 0)
+local EyeStroke = Instance.new("UIStroke", EyeBtn)
+EyeStroke.Color = Color3.fromRGB(255, 150, 0)
+EyeStroke.Thickness = 2
+
+-- [[ MAIN CONTAINER ]] --
+local Container = Instance.new("Frame", ScreenGui)
 Container.Size = UDim2.new(0, 160, 0, 215) 
 Container.Position = UDim2.new(0.5, -80, 0.2, 0)
 Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Container.BorderSizePixel = 0
 Container.Active = true
-Container.Parent = ScreenGui
-
-local ContainerCorner = Instance.new("UICorner")
-ContainerCorner.CornerRadius = UDim.new(0.05, 0)
-ContainerCorner.Parent = Container
-
-local ContainerStroke = Instance.new("UIStroke")
-ContainerStroke.Color = Color3.fromRGB(255, 150, 0) 
+Instance.new("UICorner", Container).CornerRadius = UDim.new(0.05, 0)
+local ContainerStroke = Instance.new("UIStroke", Container)
+ContainerStroke.Color = Color3.fromRGB(255, 150, 0)
 ContainerStroke.Thickness = 2
-ContainerStroke.Parent = Container
 
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = Container
+local UIListLayout = Instance.new("UIListLayout", Container)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Instance.new("UIPadding", Container).PaddingTop = UDim.new(0, 7)
 
-local UIPadding = Instance.new("UIPadding")
-UIPadding.Parent = Container
-UIPadding.PaddingTop = UDim.new(0, 7)
-UIPadding.PaddingBottom = UDim.new(0, 7)
-
--- [[ UI ELEMENTS ]] --
-local HarvestBtn = Instance.new("TextButton")
-HarvestBtn.Size = UDim2.new(0, 146, 0, 30)
-HarvestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-HarvestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HarvestBtn.Text = "OFF | Magnet Farm"
-HarvestBtn.Font = Enum.Font.Code
-HarvestBtn.TextSize = 13
-HarvestBtn.LayoutOrder = 1
-HarvestBtn.Parent = Container
-Instance.new("UICorner", HarvestBtn).CornerRadius = UDim.new(0.2, 0)
-local HarvestStroke = Instance.new("UIStroke", HarvestBtn)
-HarvestStroke.Color = Color3.fromRGB(255, 100, 0)
-
-local CounterLbl = Instance.new("TextLabel")
-CounterLbl.Size = UDim2.new(0, 146, 0, 16)
-CounterLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-CounterLbl.TextColor3 = Color3.fromRGB(164, 255, 66)
-CounterLbl.Text = "✅ Verified: 0"
-CounterLbl.Font = Enum.Font.Code
-CounterLbl.TextSize = 12
-CounterLbl.LayoutOrder = 2
-CounterLbl.Parent = Container
-Instance.new("UICorner", CounterLbl).CornerRadius = UDim.new(0.2, 0)
-
-local UpgradeBtn = Instance.new("TextButton")
-UpgradeBtn.Size = UDim2.new(0, 146, 0, 30)
-UpgradeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-UpgradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-UpgradeBtn.Text = "OFF | Auto Upgrade"
-UpgradeBtn.Font = Enum.Font.Code
-UpgradeBtn.TextSize = 13
-UpgradeBtn.LayoutOrder = 3
-UpgradeBtn.Parent = Container
-Instance.new("UICorner", UpgradeBtn).CornerRadius = UDim.new(0.2, 0)
-local UpgradeStroke = Instance.new("UIStroke", UpgradeBtn)
-UpgradeStroke.Color = Color3.fromRGB(100, 100, 255)
-
-local AscendBtn = Instance.new("TextButton")
-AscendBtn.Size = UDim2.new(0, 146, 0, 30)
-AscendBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-AscendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AscendBtn.Text = "OFF | Auto Ascend"
-AscendBtn.Font = Enum.Font.Code
-AscendBtn.TextSize = 13
-AscendBtn.LayoutOrder = 4
-AscendBtn.Parent = Container
-Instance.new("UICorner", AscendBtn).CornerRadius = UDim.new(0.2, 0)
-local AscendStroke = Instance.new("UIStroke", AscendBtn)
-AscendStroke.Color = Color3.fromRGB(255, 75, 75)
-
-local RuneBtn = Instance.new("TextButton")
-RuneBtn.Size = UDim2.new(0, 146, 0, 30)
-RuneBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-RuneBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RuneBtn.Text = "OFF | Auto Rune"
-RuneBtn.Font = Enum.Font.Code
-RuneBtn.TextSize = 13
-RuneBtn.LayoutOrder = 5
-RuneBtn.Parent = Container
-Instance.new("UICorner", RuneBtn).CornerRadius = UDim.new(0.2, 0)
-local RuneStroke = Instance.new("UIStroke", RuneBtn)
-RuneStroke.Color = Color3.fromRGB(150, 50, 255)
-
-local ConsoleBtn = Instance.new("TextButton")
-ConsoleBtn.Size = UDim2.new(0, 146, 0, 30)
-ConsoleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-ConsoleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ConsoleBtn.Text = "📜 Open Console"
-ConsoleBtn.Font = Enum.Font.Code
-ConsoleBtn.TextSize = 13
-ConsoleBtn.LayoutOrder = 6
-ConsoleBtn.Parent = Container
-Instance.new("UICorner", ConsoleBtn).CornerRadius = UDim.new(0.2, 0)
-
--- Mobile Draggable Logic
-local dragging = false
-local dragInput, dragStart, startPos
-Container.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
+-- [[ DRAG LOGIC ]] --
+local dragToggle, dragStart, startPos
+EyeBtn.InputBegan:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        dragToggle = true
         dragStart = input.Position
-        startPos = Container.Position
+        startPos = EyeBtn.Position
         input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            if input.UserInputState == Enum.UserInputState.End then dragToggle = false end
         end)
     end
-end)
-Container.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
         local delta = input.Position - dragStart
-        Container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        EyeBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- GHOST TOGGLE BUTTON (For Screenshots)
-local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0, 40, 0, 40)
-HideBtn.Position = UDim2.new(0, 10, 0, 10) 
-HideBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideBtn.Text = "👁️"
-HideBtn.TextSize = 18
-HideBtn.Parent = ScreenGui
-Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(1, 0)
-
-local uiVisible = true
-HideBtn.MouseButton1Click:Connect(function()
-    uiVisible = not uiVisible
-    Container.Visible = uiVisible
-    if uiVisible then HideBtn.Text = "👁️" else HideBtn.Text = "❌" end
+EyeBtn.MouseButton1Click:Connect(function()
+    Container.Visible = not Container.Visible
+    EyeBtn.Text = Container.Visible and "👁️" or "❌"
 end)
 
 ---------------------------------------------------------
---- [[ PART 3: THE LOGIC ENGINES ]] ---
+--- [[ PART 2: THE ENGINES ]] ---
 ---------------------------------------------------------
-
--- ENGINE 1: MAGNET HARVESTER
-local farming = false
+local isWalking, autoUpgrade, autoAscend, autoRune = false, false, false, false
 local totalHarvested = 0
-HarvestBtn.MouseButton1Click:Connect(function()
-    farming = not farming
-    if farming then
-        HarvestBtn.Text = "ON | Magnet Farm"
-        HarvestBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        task.spawn(function()
-            while farming do
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    local root = char.HumanoidRootPart
-                    local gameObjects = Workspace:FindFirstChild("GameObjects")
-                    local carrotsFolder = gameObjects and gameObjects:FindFirstChild("Carrots")
-                    
-                    if carrotsFolder then
-                        for _, carrot in ipairs(carrotsFolder:GetChildren()) do
-                            if not farming then break end 
-                            local cZone = carrot:GetAttribute("CarrotZone")
-                            local guid = carrot:GetAttribute("CarrotGuid")
-                            if cZone and guid and (carrot:IsA("BasePart") or carrot:IsA("Model")) then
-                                if carrot:IsA("Model") then
-                                    carrot:PivotTo(root.CFrame)
-                                else
-                                    carrot.CFrame = root.CFrame
-                                end
-                                task.spawn(function()
-                                    local success, result = pcall(function() return CarrotRemote:InvokeServer(cZone, guid) end)
-                                    if success and result == true then
-                                        totalHarvested = totalHarvested + 1
-                                        CounterLbl.Text = "✅ Verified: " .. tostring(totalHarvested)
-                                        if carrot and carrot.Parent then carrot:Destroy() end
-                                    end
-                                end)
-                                task.wait(0.02) -- ⚡ SUPERCHARGED SPEED TO 0.02
-                            end
+
+local function createButton(text, color, order)
+    local btn = Instance.new("TextButton", Container)
+    btn.Size = UDim2.new(0, 146, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = "OFF | " .. text
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 13
+    btn.LayoutOrder = order
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0.2, 0)
+    Instance.new("UIStroke", btn).Color = color
+    return btn
+end
+
+local WalkFarmBtn = createButton("Batch Path", Color3.fromRGB(0, 255, 120), 1)
+local CounterLbl = Instance.new("TextLabel", Container)
+CounterLbl.Size = UDim2.new(0, 146, 0, 16); CounterLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 15); CounterLbl.TextColor3 = Color3.fromRGB(164, 255, 66); CounterLbl.Text = "✅ Collected: 0"; CounterLbl.Font = Enum.Font.Code; CounterLbl.TextSize = 12; CounterLbl.LayoutOrder = 2; Instance.new("UICorner", CounterLbl).CornerRadius = UDim.new(0.2, 0)
+
+local UpgradeBtn = createButton("Auto Upgrade", Color3.fromRGB(100, 100, 255), 3)
+local AscendBtn = createButton("Auto Ascend", Color3.fromRGB(255, 75, 75), 4)
+local RuneBtn = createButton("Auto Rune", Color3.fromRGB(150, 50, 255), 5)
+
+-- COLLECTION LOGIC
+local function collectNearby()
+    local gameObjects = Workspace:FindFirstChild("GameObjects")
+    local carrotsFolder = gameObjects and gameObjects:FindFirstChild("Carrots")
+    if not carrotsFolder or not isWalking then return end
+
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, carrot in ipairs(carrotsFolder:GetChildren()) do
+        local cZone, guid = carrot:GetAttribute("CarrotZone"), carrot:GetAttribute("CarrotGuid")
+        if cZone and guid and not carrot:GetAttribute("Processed") then
+            local carrotPos = carrot:IsA("Model") and carrot:GetPivot().Position or carrot.Position
+            if (carrotPos - root.Position).Magnitude < (stepSize + 5) then
+                carrot:SetAttribute("Processed", true)
+                for _, p in ipairs(carrot:GetDescendants()) do if p:IsA("BasePart") then p.Transparency = 1; p.CanCollide = false end end
+                
+                table.insert(batchQueue, {cZone, guid})
+                if #batchQueue >= 4 then
+                    local pld = batchQueue; batchQueue = {}
+                    task.spawn(function()
+                        if BatchRemote:InvokeServer(pld) then 
+                            totalHarvested = totalHarvested + #pld
+                            CounterLbl.Text = "✅ Collected: " .. totalHarvested
                         end
-                    end
-                end
-                task.wait(0.1) 
-            end
-        end)
-    else
-        HarvestBtn.Text = "OFF | Magnet Farm"
-        HarvestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    end
-end)
-
--- ENGINE 2: AUTO UPGRADER
-local autoUpgrade = false
-local targetUpgrades = {"MoreCarrots", "FasterCarrots", "MoreSpawns", "HigherCapacity"}
-UpgradeBtn.MouseButton1Click:Connect(function()
-    autoUpgrade = not autoUpgrade
-    if autoUpgrade then
-        UpgradeBtn.Text = "ON | Auto Upgrade"
-        UpgradeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-        task.spawn(function()
-            while autoUpgrade do
-                for _, upgradeName in ipairs(targetUpgrades) do
-                    if not autoUpgrade then break end
-                    task.spawn(function() pcall(function() UpgradeRemote:InvokeServer(zone, upgradeName) end) end)
-                    task.wait(0.25)
-                end
-                task.wait(2)
-            end
-        end)
-    else
-        UpgradeBtn.Text = "OFF | Auto Upgrade"
-        UpgradeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    end
-end)
-
--- ENGINE 3: AUTO ASCENDER
-local autoAscend = false
-AscendBtn.MouseButton1Click:Connect(function()
-    autoAscend = not autoAscend
-    if autoAscend then
-        AscendBtn.Text = "ON | Auto Ascend"
-        AscendBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        task.spawn(function()
-            while autoAscend do
-                task.spawn(function() pcall(function() AscensionRemote:InvokeServer(zone) end) end)
-                task.wait(5)
-            end
-        end)
-    else
-        AscendBtn.Text = "OFF | Auto Ascend"
-        AscendBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    end
-end)
-
--- ENGINE 4: AUTO RUNE
-local autoRune = false
-RuneBtn.MouseButton1Click:Connect(function()
-    autoRune = not autoRune
-    if autoRune then
-        RuneBtn.Text = "ON | Auto Rune"
-        RuneBtn.BackgroundColor3 = Color3.fromRGB(90, 0, 150)
-        task.spawn(function()
-            while autoRune do
-                pcall(function() RuneRemote:InvokeServer(zone) end)
-                task.wait(0.03) -- ⚡ SUPERCHARGED SPEED TO 0.03
-            end
-        end)
-    else
-        RuneBtn.Text = "OFF | Auto Rune"
-        RuneBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    end
-end)
-
--- ENGINE 5: CONSOLE
-ConsoleBtn.MouseButton1Click:Connect(function()
-    pcall(function() StarterGui:SetCore("DeveloperConsoleVisible", true) end)
-end)
-
----------------------------------------------------------
---- [[ PART 4: POTATO MODE (ALWAYS ON) ]] ---
----------------------------------------------------------
-print("🥔 [AWS EXPLOIT] Carrot Potato Mode Activated! FPS Boosting...")
-
-task.spawn(function()
-    while true do
-        local gameObjects = Workspace:FindFirstChild("GameObjects")
-        local carrotsFolder = gameObjects and gameObjects:FindFirstChild("Carrots")
-        
-        if carrotsFolder then
-            for _, carrot in ipairs(carrotsFolder:GetChildren()) do
-                if not carrot:GetAttribute("IsHidden") then
-                    carrot:SetAttribute("IsHidden", true)
-                    for _, part in ipairs(carrot:GetDescendants()) do
-                        if part:IsA("BasePart") or part:IsA("MeshPart") then
-                            part.Transparency = 1
-                            part.CanCollide = false
-                            part.CastShadow = false
-                        elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
-                            part.Enabled = false
-                        elseif part:IsA("Decal") or part:IsA("Texture") then
-                            part.Transparency = 1
-                        end
-                    end
-                    if carrot:IsA("BasePart") or carrot:IsA("MeshPart") then
-                        carrot.Transparency = 1
-                        carrot.CanCollide = false
-                        carrot.CastShadow = false
-                    end
+                    end)
                 end
             end
         end
-        task.wait(1)
     end
+end
+
+-- MOVEMENT ENGINE
+local function runCoverage()
+    local function getPath()
+        local pts = {} local up = true
+        for x = minX, maxX, stepSize do
+            if up then for z = minZ, maxZ, stepSize do table.insert(pts, Vector3.new(x, fixedY, z)) end
+            else for z = maxZ, minZ, -stepSize do table.insert(pts, Vector3.new(x, fixedY, z)) end end
+            up = not up
+        end return pts
+    end
+    while isWalking do
+        for _, pt in ipairs(getPath()) do
+            if not isWalking then break end
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not hum or not root or hum.Health <= 0 then task.wait(2) break end
+            
+            hum:MoveTo(pt)
+            local reached = false
+            local conn = hum.MoveToFinished:Connect(function() reached = true end)
+            
+            while not reached and isWalking do
+                task.wait(0.1); collectNearby()
+                -- Safety Fix: Check root existence inside loop
+                local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if currentRoot and (currentRoot.Position - pt).Magnitude < 3 then reached = true end
+            end
+            if conn then conn:Disconnect() end
+        end
+        task.wait(0.5)
+    end
+end
+
+---------------------------------------------------------
+--- [[ PART 3: TOGGLES ]] ---
+---------------------------------------------------------
+WalkFarmBtn.MouseButton1Click:Connect(function()
+    isWalking = not isWalking
+    WalkFarmBtn.Text = isWalking and "ON | Batch Path" or "OFF | Batch Path"
+    WalkFarmBtn.BackgroundColor3 = isWalking and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(35, 35, 35)
+    if isWalking then 
+        task.spawn(runCoverage) 
+    else 
+        flushQueue() 
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and char.PrimaryPart then hum:MoveTo(char.PrimaryPart.Position) end 
+    end
+end)
+
+UpgradeBtn.MouseButton1Click:Connect(function()
+    autoUpgrade = not autoUpgrade
+    UpgradeBtn.Text = autoUpgrade and "ON | Auto Upgrade" or "OFF | Auto Upgrade"
+    UpgradeBtn.BackgroundColor3 = autoUpgrade and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(35, 35, 35)
+    if autoUpgrade then task.spawn(function() while autoUpgrade do for _, u in ipairs({"MoreCarrots", "FasterCarrots", "MoreSpawns", "HigherCapacity"}) do pcall(function() UpgradeRemote:InvokeServer(zone, u) end) task.wait(0.2) end task.wait(2) end end) end
+end)
+
+AscendBtn.MouseButton1Click:Connect(function()
+    autoAscend = not autoAscend
+    AscendBtn.Text = autoAscend and "ON | Auto Ascend" or "OFF | Auto Ascend"
+    AscendBtn.BackgroundColor3 = autoAscend and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(35, 35, 35)
+    if autoAscend then task.spawn(function() while autoAscend do pcall(function() AscensionRemote:InvokeServer(zone) end) task.wait(5) end end) end
+end)
+
+RuneBtn.MouseButton1Click:Connect(function()
+    autoRune = not autoRune
+    RuneBtn.Text = autoRune and "ON | Auto Rune" or "OFF | Auto Rune"
+    RuneBtn.BackgroundColor3 = autoRune and Color3.fromRGB(90, 0, 150) or Color3.fromRGB(35, 35, 35)
+    if autoRune then task.spawn(function() while autoRune do pcall(function() RuneRemote:InvokeServer(zone) end) task.wait(0.1) end end) end
 end)
